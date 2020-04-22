@@ -79,13 +79,13 @@ int main(int argc, char **argv) {
                 exit(1);
         }
     }
-    if(input.empty() || output.empty() || (c_in && !width) || !(c_in && d_in)){
+    if(input.empty() || output.empty() || (c_in && !width) || !c_in && d_in){
         cerr << "Required parameters: -i, -o" << endl << "Required one of: -c, -d" << endl;
         cerr << "Width required when -c" << endl << "Please see help..." << endl;
         exit(1);
     }
 
-    auto reader = new DataFile(input, output, width, c_in ? c_in : d_in);
+    auto reader = new DataFile(input, output, c_in ? c_in : d_in, width);
     reader->analyze_input();
 
     return 0;
