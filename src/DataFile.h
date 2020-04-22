@@ -21,10 +21,11 @@ public:
     ~DataFile();
 
     char *get_image();
-    void analyze_input();
+    void process();
+    bool save_result();
 
 private:
-    void analyze_probability();
+    map<uint8_t, int> get_probability();
     void read_header();
 
     void load_uncompressed(const string &input);
@@ -34,7 +35,6 @@ private:
     int width;
     char *image;
     bool compress;
-    map<uint8_t , int> prob;
 };
 
 

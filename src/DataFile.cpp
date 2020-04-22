@@ -3,10 +3,10 @@
  * Author: Tomas Willaschek
  * Login: xwilla00
  * Created: 22.04.2020
- * Brief:
  */
 
 #include "DataFile.h"
+#include "Tree.h"
 
 #include <utility>
 #include <fstream>
@@ -39,14 +39,8 @@ char *DataFile::get_image() {
     return this->image;
 }
 
-void DataFile::analyze_input() {
-    if(compress)
-        analyze_probability();
-    else
-        read_header();
-}
-
-void DataFile::analyze_probability() {
+map<uint8_t, int> DataFile::get_probability() {
+    map<uint8_t, int> prob;
     uint8_t value;
     map<uint8_t, int>::iterator it;
     for(int i = 0; i < width*width; i++){
@@ -59,10 +53,11 @@ void DataFile::analyze_probability() {
         }
     }
     cout << prob.size() << endl;
+    return prob;
 }
 
 void DataFile::read_header() {
-
+    cout << "TODO" << endl;
 }
 
 void DataFile::load_uncompressed(const string& input) {
@@ -75,6 +70,7 @@ void DataFile::load_uncompressed(const string& input) {
 }
 
 void DataFile::load_compressed(const string& input) {
+    cout << "TODO" << endl;
     ifstream file(input, ios::binary);
     file.unsetf(std::ios::skipws);
 
@@ -82,4 +78,15 @@ void DataFile::load_compressed(const string& input) {
     // TODO
 //    file.read(image, width*width);
     file.close();
+}
+
+void DataFile::process() {
+    if(compress){
+        auto prob = get_probability();
+        auto tree = new Tree(prob);
+        tree->build();
+    }
+    else{
+        read_header();
+    }
 }
