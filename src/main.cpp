@@ -87,6 +87,8 @@ int main(int argc, char **argv) {
 
     auto codec = new DataFile(input, output, c_in ? c_in : d_in, width);
     codec->process();
+    codec->save_result();
+
 
     return 0;
 }

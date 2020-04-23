@@ -11,14 +11,18 @@
 
 #include <iostream>
 #include <map>
+#include <vector>
 
+using std::pair;
 using std::map;
+using std::vector;
+
 
 struct node_t {
+    node_t *p;
     node_t *r;
     node_t *l;
     uint8_t val;
-    int count;
 };
 
 
@@ -28,13 +32,17 @@ public:
     ~Tree();
 
     void build();
+    node_t *get_root();
+    uint8_t get_tree_size();
 
 private:
     void comp_word_len();
+    void build_tree();
 
-    map<uint8_t, int> prob;
+    vector<pair<uint8_t, int>> prob;
     node_t *root;
     int *lenghts;
+    int prob_cnt;
 };
 
 

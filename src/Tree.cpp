@@ -21,37 +21,47 @@ using std::pair;
 using std::vector;
 
 Tree::Tree(map<uint8_t, int> &prob) {
-    this->prob = prob;
+    vector<pair<uint8_t, int>> new_prob(prob.begin(), prob.end());
+
+    sort(new_prob.begin(), new_prob.end(),
+            [](pair<uint8_t, int>a, pair<uint8_t, int> b){return a.second > b.second;});
+    this->prob = new_prob;
     this->root = nullptr;
-    this->lenghts = new int[prob.size()];
+    this->prob_cnt = prob.size();
+    this->lenghts = new int[prob_cnt];
 }
 
 Tree::~Tree(){
     delete[] lenghts;
-};
+    auto pt = root;
+    while(pt != nullptr){
+        delete pt->l;
+        if(pt->r == nullptr)
+            delete pt;
+        else{
+            pt = pt->r;
+            delete pt->p;
+        }
+    }
+}
 
 void Tree::build() {
     comp_word_len();
+    build_tree();
 }
 
 void Tree::comp_word_len() {
-    int prob_size = 4; //prob.size();
+    int prob_size = prob.size();
     int m = prob_size;
     vector<int> hr(m * 2, 0);
     vector<pair<int, int>> heap;
     pair<int, int> a, b;
     int i = 0;
 
-//    for(auto freq: prob){
-//        heap.push_back(pair<int, int> (freq.second, i + m));
-//        i++;
-//    }
-
-    heap.push_back(pair<int, int> (30,4));
-    heap.push_back(pair<int, int> (15, 5));
-    heap.push_back(pair<int, int> (10,6));
-    heap.push_back(pair<int, int> (7,7));
-//    heap.push_back(pair<int, int> (1,8));
+    for(auto freq: prob){
+        heap.push_back(pair<int, int> (freq.second, i + m));
+        i++;
+    }
 
     while(m > 1){
         sort(heap.begin(), heap.end(), [](pair<int,int>a, pair<int,int>b){return a.first < b.first;});
@@ -74,8 +84,59 @@ void Tree::comp_word_len() {
         }
         lenghts[i] = l;
     }
+    sort(lenghts, lenghts+prob_cnt, [](int a, int b){return a<b;});
+}
 
-    for(i = prob_size-1; i >= 0; i--)
-        cout << lenghts[i] << ",";
-    cout << endl;
+void Tree::build_tree() {
+    root = new node_t;
+    root->r = root->l = root->p = nullptr;
+    // insert first
+    node_t *new_node = new node_t;
+    new_node->p = root;
+    new_node->r = new_node->l = nullptr;
+    new_node->val = prob.begin()->first;
+    root->l = new_node;
+    auto pt = new node_t;
+    pt->l = pt->r = nullptr;
+    root->r = pt;
+    pt = root->r;
+
+    int i = 0;
+    int last_len = 0;
+    for(auto item: prob){
+        cout << (int)item.first << ": " << item.second << endl;
+        if(i == 0){
+            i++;
+            continue;
+        }
+        if(last_len == lenghts[i]) {
+            pt->val = item.first;
+            pt->r = pt->l = nullptr;
+            break;
+        }
+
+        new_node = new node_t;
+        new_node->r = new_node->l = nullptr;
+        new_node->val = item.first;
+        new_node->p = pt;
+        pt->l = new_node; // leaf
+        new_node = new node_t;
+        new_node->r = new_node->l = nullptr;
+        new_node->p = pt;
+        // last item will be inserted
+        pt->r = new_node; // new node
+        pt = pt->r;
+        last_len = lenghts[i];
+        i++;
+    }
+    if(i+1 != prob.size())
+        cerr << "err" << endl;
+}
+
+node_t *Tree::get_root() {
+    return root;
+}
+
+uint8_t Tree::get_tree_size() {
+    return prob.size();
 }
