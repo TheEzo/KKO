@@ -22,24 +22,24 @@ struct node_t {
     node_t *p;
     node_t *r;
     node_t *l;
-    uint8_t val;
+    int val;
 };
 
 
 class Tree {
 public:
-    explicit Tree(map<uint8_t, int> &prob);
+    Tree(map<unsigned int, int> &prob);
     ~Tree();
 
     void build();
     node_t *get_root();
-    uint8_t get_tree_size();
+    int get_tree_size();
 
 private:
     void comp_word_len();
     void build_tree();
 
-    vector<pair<uint8_t, int>> prob;
+    vector<pair<unsigned int, int>> prob;
     node_t *root;
     int *lenghts;
     int prob_cnt;

@@ -11,52 +11,52 @@
 #include <utility>
 #include <fstream>
 #include <vector>
+#include <cstdlib>
 
 ///TODO delete this block
 /////////////////////////
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
 /////////////////////////
 
-DataFile::DataFile(const string &input, string output, bool compress, int width=0) {
+DataFile::DataFile(const string &input, string output, bool compress, int width) {
     this->output = std::move(output);
     this->width = width;
     this->compress = compress;
-    this->image = new char[width*width];
 
-    if(compress)
+    if(compress){
+        image = (char *) malloc(width*width*sizeof(char));
         load_uncompressed(input);
+    }
     else
         load_compressed(input);
 }
 
 DataFile::~DataFile(){
-    delete[] image;
+    free(image);
 }
 
 char *DataFile::get_image() {
-    return this->image;
+    return image;
 }
 
-map<uint8_t, int> DataFile::get_probability() {
-    map<uint8_t, int> prob;
-    uint8_t value;
-    map<uint8_t, int>::iterator it;
+map<unsigned int, int> DataFile::get_probability() {
+    map<unsigned int, int> prob;
+    unsigned int value;
+    map<unsigned int, int>::iterator it;
     for(int i = 0; i < width*width; i++){
-        value = image[i];
+        value = (uint8_t)image[i];
         it = prob.find(value);
         if(it != prob.end())
             it->second++;
         else{
-            prob.insert(pair<uint8_t, int>(value, 1));
+            prob.insert(pair<unsigned int, int>(value, 1));
         }
     }
+    prob.insert(pair<unsigned int, int>(256, 1));
     return prob;
-}
-
-void DataFile::read_header() {
-    cout << "TODO" << endl;
 }
 
 void DataFile::load_uncompressed(const string& input) {
@@ -69,13 +69,36 @@ void DataFile::load_uncompressed(const string& input) {
 }
 
 void DataFile::load_compressed(const string& input) {
-    cout << "TODO" << endl;
     ifstream file(input, ios::binary);
     file.unsetf(std::ios::skipws);
 
     file.seekg(0, ios::beg);
-    // TODO
-//    file.read(image, width*width);
+    unsigned char byte;
+    unsigned int val;
+    string code_word;
+    uint8_t header = file.get();
+    // read header
+    for(int i = 0; i < (uint8_t)header + 1; i++){
+        // read coded value
+        byte = '\0';
+        for(int j = 7; j >= 0; j--)
+            byte |= (get_next_bit(file) ? 1 : 0) << j;
+        val = (uint8_t) byte;
+        // read codeword size
+        byte = '\0';
+        for(int j = 7; j >= 0; j--)
+            byte |= (get_next_bit(file) ? 1 : 0) << j;
+        code_word = "";
+        for(int j = 0; j < (uint8_t)byte; j++){
+            code_word += get_next_bit(file) ? "1" : "0";
+        }
+        decodewords.insert(pair<string, unsigned int>(code_word, val));
+    }
+    // insert 256
+    code_word = code_word.substr(0, code_word.size() - 1);
+    decodewords.insert(pair<string, unsigned int>(code_word + "1", 256));
+
+    decompress_data(file);
     file.close();
 }
 
@@ -86,7 +109,7 @@ void DataFile::process() {
         tree->build();
     }
     else{
-        read_header();
+        // nothing to do
     }
 }
 
@@ -94,32 +117,34 @@ bool DataFile::save_result() {
     ofstream file(output, ios::binary);
     if(compress){
         // write header size
-        char header_size = tree->get_tree_size();
+        // remove key 256, -1 to save max index only
+        unsigned char header_size = tree->get_tree_size() - 2;
         write_byte(file, header_size);
         node_t *pt = tree->get_root();
         string code_word = "";
         while(pt != nullptr){
-            if(is_leaf(*pt)){ // last tree element 11...1
-                write_byte(file, pt->val);
-                write_byte(file, code_word.length());
-                write_codeword(file, code_word);
-                codewords.insert(pair<uint8_t, string>(pt->val, code_word));
+            if(is_leaf(*pt)){
+                // last tree element 11..1
+                // value 256 - EOF
+                codewords.insert(pair<unsigned int, string>(pt->val, code_word));
                 pt = nullptr;
             }
             else{
                 write_byte(file, pt->l->val);
                 write_byte(file, code_word.length() + 1);
                 write_codeword(file, code_word + "0");
-                codewords.insert(pair<uint8_t, string>(pt->l->val, code_word + "0"));
+                codewords.insert(pair<unsigned int, string>(pt->l->val, code_word + "0"));
                 pt = pt->r;
                 code_word += "1";
             }
         }
+        for(auto i: codewords)
+            cout << i.first << ": " << i.second << endl;
         compress_data(file);
-        // TODO write 256
     }
     else {
-
+        for(int i = 0; i < width*width; i++)
+            file << image[i];
     }
     file.close();
 
@@ -150,15 +175,60 @@ void DataFile::write_codeword(ofstream &file, const string keyword) {
 }
 
 void DataFile::write_byte(ofstream &file, const unsigned char byte) {
-    for(uint8_t i = 128; i > 0; i/=2)
+    for(int i = 128; i > 0; i/=2)
         write_bit(file, byte & i);
 }
 
 void DataFile::compress_data(ofstream &file) {
-    map<uint8_t, string>::iterator it;
+    map<unsigned int, string>::iterator it;
     auto data = get_image();
     for(int i = 0; i < width*width; i++){
-        it = codewords.find((int)data[i]);
+        it = codewords.find((uint8_t)data[i]);
         write_codeword(file, it->second);
+    }
+    it = codewords.find(256);
+    write_codeword(file, it->second);
+    // finish last byte with zeros
+    write_byte(file, '\0');
+}
+
+bool DataFile::get_next_bit(ifstream &file) {
+    static unsigned char byte = '\0';
+    static int mask = 0;
+
+    if(mask == 0){
+        byte = file.get();
+        mask = 128;
+    }
+
+    bool bit = byte & mask;
+    mask /= 2;
+    return bit;
+}
+
+void DataFile::decompress_data(ifstream &file) {
+    int default_size = 512*512;
+    width = 512;
+    image = (char *)malloc(default_size * sizeof(char));
+    int index = 0;
+    string code_word;
+    map<string, unsigned int>::iterator it;
+    while(true){
+        code_word = "";
+        while(true){
+            code_word += get_next_bit(file) ? "1" : "0";
+            it = decodewords.find(code_word);
+            if(it != decodewords.end()){
+                break;
+            }
+        }
+        if(it->second == 256)
+            break;
+        if(index > default_size){
+            width++;
+            image = (char *) realloc(image, width*width*sizeof(char));
+        }
+        image[index] = (uint8_t) it->second;
+        index++;
     }
 }

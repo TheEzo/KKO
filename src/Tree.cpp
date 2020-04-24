@@ -20,11 +20,10 @@ using namespace std;
 using std::pair;
 using std::vector;
 
-Tree::Tree(map<uint8_t, int> &prob) {
-    vector<pair<uint8_t, int>> new_prob(prob.begin(), prob.end());
-
+Tree::Tree(map<unsigned int, int> &prob) {
+    vector<pair<unsigned int, int>> new_prob(prob.begin(), prob.end());
     sort(new_prob.begin(), new_prob.end(),
-            [](pair<uint8_t, int>a, pair<uint8_t, int> b){return a.second > b.second;});
+            [](pair<unsigned int, int>a, pair<unsigned int, int> b){return a.second > b.second;});
     this->prob = new_prob;
     this->root = nullptr;
     this->prob_cnt = prob.size();
@@ -59,19 +58,20 @@ void Tree::comp_word_len() {
     int i = 0;
 
     for(auto freq: prob){
-        heap.push_back(pair<int, int> (freq.second, i + m));
+        heap.push_back(pair<unsigned int, int> (freq.second, i + m));
         i++;
     }
 
     while(m > 1){
-        sort(heap.begin(), heap.end(), [](pair<int,int>a, pair<int,int>b){return a.first < b.first;});
+        sort(heap.begin(), heap.end(),
+                [](pair<unsigned int,int>a, pair<unsigned int,int>b){return a.first < b.first;});
         a = heap.back();
         heap.pop_back();
         b = heap.back();
         heap.pop_back();
         m--;
         hr[a.second] = hr[b.second] = m;
-        heap.push_back(pair<int, int> (a.first + b.first, m));
+        heap.push_back(pair<unsigned int, int> (a.first + b.first, m));
     }
 
     int j, l;
@@ -104,7 +104,6 @@ void Tree::build_tree() {
     int i = 0;
     int last_len = 0;
     for(auto item: prob){
-        cout << (int)item.first << ": " << item.second << endl;
         if(i == 0){
             i++;
             continue;
@@ -137,6 +136,6 @@ node_t *Tree::get_root() {
     return root;
 }
 
-uint8_t Tree::get_tree_size() {
+int Tree::get_tree_size() {
     return prob.size();
 }
