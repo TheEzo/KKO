@@ -23,7 +23,11 @@ using std::vector;
 Tree::Tree(map<unsigned int, int> &prob) {
     vector<pair<unsigned int, int>> new_prob(prob.begin(), prob.end());
     sort(new_prob.begin(), new_prob.end(),
-            [](pair<unsigned int, int>a, pair<unsigned int, int> b){return a.second > b.second;});
+            [](pair<unsigned int, int>a, pair<unsigned int, int> b){
+        if(a.second == b.second)
+            return a.first < b.first;
+        return a.second > b.second;
+    });
     this->prob = new_prob;
     this->root = nullptr;
     this->prob_cnt = prob.size();
@@ -91,23 +95,12 @@ void Tree::build_tree() {
     root = new node_t;
     root->r = root->l = root->p = nullptr;
     // insert first
-    node_t *new_node = new node_t;
-    new_node->p = root;
-    new_node->r = new_node->l = nullptr;
-    new_node->val = prob.begin()->first;
-    root->l = new_node;
-    auto pt = new node_t;
-    pt->l = pt->r = nullptr;
-    root->r = pt;
-    pt = root->r;
+    node_t *new_node = nullptr;
+    auto pt = root;
 
-    int i = 0;
+    unsigned int i = 0;
     int last_len = 0;
     for(auto item: prob){
-        if(i == 0){
-            i++;
-            continue;
-        }
         if(last_len == lenghts[i]) {
             pt->val = item.first;
             pt->r = pt->l = nullptr;
@@ -124,7 +117,7 @@ void Tree::build_tree() {
         new_node->p = pt;
         // last item will be inserted
         pt->r = new_node; // new node
-        pt = pt->r;
+        pt = new_node;
         last_len = lenghts[i];
         i++;
     }

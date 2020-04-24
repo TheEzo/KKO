@@ -16,3 +16,4 @@ clean:
 
 pack:
 	zip -r kko_xwilla00.zip src/ Makefile willa00.pdf
+

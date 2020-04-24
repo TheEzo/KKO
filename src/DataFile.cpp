@@ -21,10 +21,11 @@ using namespace std;
 
 /////////////////////////
 
-DataFile::DataFile(const string &input, string output, bool compress, int width) {
+DataFile::DataFile(const string &input, string output, bool compress, int width, bool adaptive) {
     this->output = std::move(output);
     this->width = width;
     this->compress = compress;
+    this->adaptive = adaptive;
 
     if(compress){
         image = (char *) malloc(width*width*sizeof(char));
@@ -78,9 +79,10 @@ void DataFile::load_compressed(const string& input) {
     string code_word;
     uint8_t header = file.get();
     // read header
-    for(int i = 0; i < (uint8_t)header + 1; i++){
+    for(int i = 0; i < header + 1; i++){
         // read coded value
         byte = '\0';
+
         for(int j = 7; j >= 0; j--)
             byte |= (get_next_bit(file) ? 1 : 0) << j;
         val = (uint8_t) byte;
@@ -89,7 +91,7 @@ void DataFile::load_compressed(const string& input) {
         for(int j = 7; j >= 0; j--)
             byte |= (get_next_bit(file) ? 1 : 0) << j;
         code_word = "";
-        for(int j = 0; j < (uint8_t)byte; j++){
+        for(int j = 0; j < (uint8_t)byte + 1; j++){
             code_word += get_next_bit(file) ? "1" : "0";
         }
         decodewords.insert(pair<string, unsigned int>(code_word, val));
@@ -131,19 +133,18 @@ bool DataFile::save_result() {
             }
             else{
                 write_byte(file, pt->l->val);
-                write_byte(file, code_word.length() + 1);
+                write_byte(file, code_word.size());
                 write_codeword(file, code_word + "0");
                 codewords.insert(pair<unsigned int, string>(pt->l->val, code_word + "0"));
                 pt = pt->r;
                 code_word += "1";
             }
         }
-        for(auto i: codewords)
-            cout << i.first << ": " << i.second << endl;
         compress_data(file);
     }
     else {
-        for(int i = 0; i < width*width; i++)
+        int i;
+        for(i = 0; i < width*width; i++)
             file << image[i];
     }
     file.close();
@@ -169,7 +170,7 @@ bool DataFile::is_leaf(const node_t &node) {
 }
 
 void DataFile::write_codeword(ofstream &file, const string keyword) {
-    for(int i = 0; i < keyword.size(); i++){
+    for(unsigned int i = 0; i < keyword.size(); i++){
         write_bit(file, keyword[i] == '1');
     }
 }
@@ -181,9 +182,10 @@ void DataFile::write_byte(ofstream &file, const unsigned char byte) {
 
 void DataFile::compress_data(ofstream &file) {
     map<unsigned int, string>::iterator it;
-    auto data = get_image();
     for(int i = 0; i < width*width; i++){
-        it = codewords.find((uint8_t)data[i]);
+        it = codewords.find((uint8_t)image[i]);
+        if(it == codewords.end())
+            cerr << "err" << endl;
         write_codeword(file, it->second);
     }
     it = codewords.find(256);
@@ -207,8 +209,8 @@ bool DataFile::get_next_bit(ifstream &file) {
 }
 
 void DataFile::decompress_data(ifstream &file) {
-    int default_size = 512*512;
     width = 512;
+    int default_size = width*width;
     image = (char *)malloc(default_size * sizeof(char));
     int index = 0;
     string code_word;
@@ -231,4 +233,5 @@ void DataFile::decompress_data(ifstream &file) {
         image[index] = (uint8_t) it->second;
         index++;
     }
+    return;
 }
