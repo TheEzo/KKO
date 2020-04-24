@@ -28,12 +28,13 @@ struct node_t {
 
 class Tree {
 public:
-    Tree(map<unsigned int, int> &prob);
+    Tree();
     ~Tree();
 
     void build();
     node_t *get_root();
     int get_tree_size();
+    void set_probs(map<unsigned int, int> &prob);
 
 private:
     void comp_word_len();

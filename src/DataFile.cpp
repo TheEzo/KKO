@@ -21,11 +21,13 @@ using namespace std;
 
 /////////////////////////
 
-DataFile::DataFile(const string &input, string output, bool compress, int width, bool adaptive) {
+DataFile::DataFile(const string &input, string output, bool compress, int width, bool adaptive, bool model) {
     this->output = std::move(output);
     this->width = width;
     this->compress = compress;
     this->adaptive = adaptive;
+    this->model = model;
+    this->tree = nullptr;
 
     if(compress){
         image = (char *) malloc(width*width*sizeof(char));
@@ -37,6 +39,8 @@ DataFile::DataFile(const string &input, string output, bool compress, int width,
 
 DataFile::~DataFile(){
     free(image);
+    if(tree != nullptr)
+        delete tree;
 }
 
 char *DataFile::get_image() {
@@ -62,7 +66,6 @@ map<unsigned int, int> DataFile::get_probability() {
 
 void DataFile::load_uncompressed(const string& input) {
     ifstream file(input, ios::binary);
-    file.unsetf(std::ios::skipws);
 
     file.seekg(0, ios::beg);
     file.read(image, width*width);
@@ -107,7 +110,8 @@ void DataFile::load_compressed(const string& input) {
 void DataFile::process() {
     if(compress){
         auto prob = get_probability();
-        tree = new Tree(prob);
+        tree = new Tree();
+        tree->set_probs(prob);
         tree->build();
     }
     else{
@@ -118,29 +122,10 @@ void DataFile::process() {
 bool DataFile::save_result() {
     ofstream file(output, ios::binary);
     if(compress){
-        // write header size
-        // remove key 256, -1 to save max index only
-        unsigned char header_size = tree->get_tree_size() - 2;
-        write_byte(file, header_size);
-        node_t *pt = tree->get_root();
-        string code_word = "";
-        while(pt != nullptr){
-            if(is_leaf(*pt)){
-                // last tree element 11..1
-                // value 256 - EOF
-                codewords.insert(pair<unsigned int, string>(pt->val, code_word));
-                pt = nullptr;
-            }
-            else{
-                write_byte(file, pt->l->val);
-                write_byte(file, code_word.size());
-                write_codeword(file, code_word + "0");
-                codewords.insert(pair<unsigned int, string>(pt->l->val, code_word + "0"));
-                pt = pt->r;
-                code_word += "1";
-            }
-        }
-        compress_data(file);
+        if(adaptive)
+            adaptive_save(file);
+        else
+            normal_save(file);
     }
     else {
         int i;
@@ -184,8 +169,6 @@ void DataFile::compress_data(ofstream &file) {
     map<unsigned int, string>::iterator it;
     for(int i = 0; i < width*width; i++){
         it = codewords.find((uint8_t)image[i]);
-        if(it == codewords.end())
-            cerr << "err" << endl;
         write_codeword(file, it->second);
     }
     it = codewords.find(256);
@@ -234,4 +217,44 @@ void DataFile::decompress_data(ifstream &file) {
         index++;
     }
     return;
+}
+
+void DataFile::normal_save(ofstream &file) {
+    // write header size
+    // remove key 256, -1 to save max index only
+    unsigned char header_size = tree->get_tree_size() - 2;
+    write_byte(file, header_size);
+    save_tree(file);
+    compress_data(file);
+}
+
+void DataFile::adaptive_save(ofstream &file) {
+    bool loop = true;
+    tree = new Tree();
+    while(loop){
+
+
+        return;
+    }
+}
+
+void DataFile::save_tree(ofstream &file) {
+    node_t *pt = tree->get_root();
+    string code_word = "";
+    while(pt != nullptr){
+        if(is_leaf(*pt)){
+            // last tree element 11..1
+            // value 256 - EOF
+            codewords.insert(pair<unsigned int, string>(pt->val, code_word));
+            pt = nullptr;
+        }
+        else{
+            write_byte(file, pt->l->val);
+            write_byte(file, code_word.size());
+            write_codeword(file, code_word + "0");
+            codewords.insert(pair<unsigned int, string>(pt->l->val, code_word + "0"));
+            pt = pt->r;
+            code_word += "1";
+        }
+    }
 }

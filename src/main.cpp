@@ -42,7 +42,7 @@ int main(int argc, char **argv) {
     string input, output;
     int option_index;
     int c, width = 0;
-    bool c_in = false, d_in = false, adaptive = false;
+    bool c_in = false, d_in = false, adaptive = false, model = false;
     while ((c = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1){
         switch (c) {
             case 'c':
@@ -55,8 +55,8 @@ int main(int argc, char **argv) {
                 adaptive = true;
                 break;
             case 'm':
-                cout << "m" << endl;
-                // TODO
+                model = true;
+                exit(1);
                 break;
             case 'i':
                 input = optarg;
@@ -84,7 +84,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    auto codec = new DataFile(input, output, c_in, width, adaptive);
+    auto codec = new DataFile(input, output, c_in, width, adaptive, model);
     codec->process();
     codec->save_result();
 

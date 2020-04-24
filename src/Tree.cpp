@@ -20,18 +20,10 @@ using namespace std;
 using std::pair;
 using std::vector;
 
-Tree::Tree(map<unsigned int, int> &prob) {
-    vector<pair<unsigned int, int>> new_prob(prob.begin(), prob.end());
-    sort(new_prob.begin(), new_prob.end(),
-            [](pair<unsigned int, int>a, pair<unsigned int, int> b){
-        if(a.second == b.second)
-            return a.first < b.first;
-        return a.second > b.second;
-    });
-    this->prob = new_prob;
+Tree::Tree() {
     this->root = nullptr;
-    this->prob_cnt = prob.size();
-    this->lenghts = new int[prob_cnt];
+    this->prob_cnt = 0;
+    this->lenghts = nullptr;
 }
 
 Tree::~Tree(){
@@ -131,4 +123,17 @@ node_t *Tree::get_root() {
 
 int Tree::get_tree_size() {
     return prob.size();
+}
+
+void Tree::set_probs(map<unsigned int, int> &prob) {
+    vector<pair<unsigned int, int>> new_prob(prob.begin(), prob.end());
+    sort(new_prob.begin(), new_prob.end(),
+         [](pair<unsigned int, int>a, pair<unsigned int, int> b){
+             if(a.second == b.second)
+                 return a.first < b.first;
+             return a.second > b.second;
+         });
+    this->prob = new_prob;
+    this->prob_cnt = new_prob.size();
+    this->lenghts = new int[prob_cnt];
 }

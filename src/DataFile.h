@@ -22,7 +22,7 @@ using std::ifstream;
 
 class DataFile {
 public:
-    DataFile(const string& input, string output, bool compress, int width, bool adaptive);
+    DataFile(const string& input, string output, bool compress, int width, bool adaptive, bool model);
     ~DataFile();
 
     char *get_image();
@@ -42,12 +42,17 @@ private:
     void compress_data(ofstream &file);
     void decompress_data(ifstream &file);
     bool get_next_bit(ifstream &file);
+    void save_tree(ofstream &file);
+
+    void normal_save(ofstream &file);
+    void adaptive_save(ofstream &file);
 
     string output;
     int width;
     char *image;
     bool compress;
     bool adaptive;
+    bool model;
     Tree *tree;
     map<unsigned int, string> codewords;
     map<string, unsigned int> decodewords;

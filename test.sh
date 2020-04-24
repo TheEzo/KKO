@@ -1,6 +1,6 @@
 #!/bin/bash
 
-files=(01 02 03 07 08 09 12)
+files=(01 02 03 04 05 06 07 08 09 12)
 #files=(01)
 make
 
@@ -16,4 +16,5 @@ do
   else
     echo "FAILED"
   fi
+  rm -f test.huff test2.huff
 done
