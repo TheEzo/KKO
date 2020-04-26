@@ -29,20 +29,13 @@ Tree::Tree() {
 Tree::~Tree(){
     delete[] lenghts;
     auto pt = root;
+    node_t *tmp;
     while(pt != nullptr){
         delete pt->l;
-        if(pt->r == nullptr)
-            delete pt;
-        else{
-            pt = pt->r;
-            delete pt->p;
-        }
+        tmp = pt;
+        pt = pt->r;
+        delete tmp;
     }
-}
-
-void Tree::build() {
-    comp_word_len();
-    build_tree();
 }
 
 void Tree::comp_word_len() {
@@ -85,7 +78,7 @@ void Tree::comp_word_len() {
 
 void Tree::build_tree() {
     root = new node_t;
-    root->r = root->l = root->p = nullptr;
+    root->r = root->l = nullptr;
     // insert first
     node_t *new_node = nullptr;
     auto pt = root;
@@ -102,11 +95,9 @@ void Tree::build_tree() {
         new_node = new node_t;
         new_node->r = new_node->l = nullptr;
         new_node->val = item.first;
-        new_node->p = pt;
         pt->l = new_node; // leaf
         new_node = new node_t;
         new_node->r = new_node->l = nullptr;
-        new_node->p = pt;
         // last item will be inserted
         pt->r = new_node; // new node
         pt = new_node;
@@ -125,7 +116,7 @@ int Tree::get_tree_size() {
     return prob.size();
 }
 
-void Tree::set_probs(map<unsigned int, int> &prob) {
+void Tree::build_with_probs(map<unsigned int, int> &prob) {
     vector<pair<unsigned int, int>> new_prob(prob.begin(), prob.end());
     sort(new_prob.begin(), new_prob.end(),
          [](pair<unsigned int, int>a, pair<unsigned int, int> b){
@@ -136,4 +127,36 @@ void Tree::set_probs(map<unsigned int, int> &prob) {
     this->prob = new_prob;
     this->prob_cnt = new_prob.size();
     this->lenghts = new int[prob_cnt];
+    comp_word_len();
+    build_tree();
+}
+
+void Tree::build_tree_with_dw(map<string, unsigned int> dw) {
+    vector<pair<string, unsigned int>>words (dw.begin(), dw.end());
+    sort(words.begin(), words.end(),
+            [](pair<string, unsigned int>a, pair<string, unsigned int>b){
+        if(a.first.size() == b.first.size()){
+            return a.second < b.second;
+        }
+        return a.first.size() < b.first.size();
+    });
+    root = new node_t;
+    root->l = root->r = nullptr;
+    auto pt = root;
+    node_t *new_node;
+    for(auto item: words){
+        if (item.first[item.first.size() - 1] == '0'){
+            new_node = new node_t;
+            new_node->r = new_node->l = nullptr;
+            new_node->val = item.second;
+            pt->l = new_node;
+            new_node = new node_t;
+            new_node->r = new_node->l = nullptr;
+            pt->r = new_node;
+            pt = new_node;
+        }
+        else{
+            pt->val = item.second;
+        }
+    }
 }

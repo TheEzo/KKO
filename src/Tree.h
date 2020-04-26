@@ -16,10 +16,9 @@
 using std::pair;
 using std::map;
 using std::vector;
-
+using std::string;
 
 struct node_t {
-    node_t *p;
     node_t *r;
     node_t *l;
     int val;
@@ -31,10 +30,10 @@ public:
     Tree();
     ~Tree();
 
-    void build();
+    void build_with_probs(map<unsigned int, int> &prob);
     node_t *get_root();
     int get_tree_size();
-    void set_probs(map<unsigned int, int> &prob);
+    void build_tree_with_dw(map<string, unsigned int> dw);
 
 private:
     void comp_word_len();

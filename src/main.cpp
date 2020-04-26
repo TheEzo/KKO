@@ -56,7 +56,6 @@ int main(int argc, char **argv) {
                 break;
             case 'm':
                 model = true;
-                exit(1);
                 break;
             case 'i':
                 input = optarg;
@@ -85,7 +84,6 @@ int main(int argc, char **argv) {
     }
 
     auto codec = new DataFile(input, output, c_in, width, adaptive, model);
-    codec->process();
     codec->save_result();
 
     return 0;
