@@ -1,30 +1,26 @@
 #!/bin/bash
 
-files=(01 02 03 04 05 06 07 08 09 12)
-sd=(01 02)
+files=(hd01 hd02 hd03 hd04 hd05 hd06 hd07 hd08 hd09 hd12 sd01 sd02)
 
-#files=(09)
 make
 
 for f in "${files[@]}"
 do
-  printf "data/hd${f}.raw "
-  ./huff_codec -c -i "data/hd${f}.raw" -o test.huff -w 512
+  printf "data/${f}.raw   normal: "
+  ./huff_codec -c -i "data/${f}.raw" -o test.huff -w 512
   ./huff_codec -d -i test.huff -o test2.huff
-  diff -q test2.huff "data/hd${f}.raw" >> /dev/null
+  diff -q test2.huff "data/${f}.raw" >> /dev/null
   if [ $? -eq 0 ]
   then
     echo "OK"
   else
     echo "FAILED"
   fi
-done
-for f in "${sd[@]}"
-do
-  printf "data/sd${f}.raw "
-  ./huff_codec -c -i "data/sd${f}.raw" -o test.huff -w 128
-  ./huff_codec -d -i test.huff -o test2.huff
-  diff -q test2.huff "data/sd${f}.raw" >> /dev/null
+
+  printf "data/${f}.raw adaptive: "
+  ./huff_codec -c -i "data/${f}.raw" -o test.huff -w 512 -a
+  ./huff_codec -d -i test.huff -o test2.huff -a
+  diff -q test2.huff "data/${f}.raw" >> /dev/null
   if [ $? -eq 0 ]
   then
     echo "OK"

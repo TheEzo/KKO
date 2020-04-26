@@ -38,7 +38,10 @@ DataFile::DataFile(const string &input, string output, bool compress, int width,
         }
     }
     else
-        load_compressed(input);
+        if(adaptive)
+            load_compressed_a(input);
+        else
+            load_compressed(input);
 }
 
 DataFile::~DataFile(){
@@ -64,7 +67,6 @@ map<unsigned int, int> DataFile::get_probability() {
         }
     }
     prob.insert(pair<unsigned int, int>(256, 1));
-    int a = prob.size();
     return prob;
 }
 
@@ -93,14 +95,10 @@ void DataFile::load_compressed(const string& input) {
     // read header
     for(int i = 0; i < header + 1; i++){
         // read coded value
-        byte = '\0';
-        for(int j = 7; j >= 0; j--)
-            byte |= (get_next_bit(file) ? 1 : 0) << j;
+        byte = get_next_byte(file);
         val = (uint8_t) byte;
         // read codeword size
-        byte = '\0';
-        for(int j = 7; j >= 0; j--)
-            byte |= (get_next_bit(file) ? 1 : 0) << j;
+        byte = get_next_byte(file);
         code_word = "";
         for(int j = 0; j < (uint8_t)byte + 1; j++){
             code_word += get_next_bit(file) ? "1" : "0";
@@ -110,7 +108,6 @@ void DataFile::load_compressed(const string& input) {
     // insert 256
     code_word = code_word.substr(0, code_word.size() - 1);
     decodewords.insert({code_word + "1", 256});
-    int a = decodewords.size();
     tree = new Tree;
     tree->build_tree_with_dw(decodewords);
     decompress_data(file);
@@ -220,41 +217,46 @@ void DataFile::normal_save(ofstream &file) {
 }
 
 void DataFile::adaptive_save(ofstream &file) {
-    int step = 1000;
     bool loop = true;
     map<unsigned int, int> probs;
     map<unsigned int, int>::iterator it;
-    int start_index = 0, data_size = width*width;
+    int offset = 0;
     node_t *pt;
     string code_word;
     while(loop){
-        for(int i = 0; i < step && loop; i++){
-            it = probs.find((unsigned int) image[i+start_index]);
+        probs.clear();
+        for(int i = 0; i < step; i++){
+            if(i+offset == size){
+                loop = false;
+                break;
+            }
+            it = probs.find((unsigned int) image[i+offset]);
             if(it == probs.end())
-                probs.insert({(uint8_t)image[i+start_index], 1});
+                probs.insert({(uint8_t)image[i+offset], 1});
             else
                 it->second++;
-            if(i+start_index == data_size-1)
-                loop = false;
         }
+        probs.insert({256, 1});
         delete tree;
         tree = new Tree();
         tree->build_with_probs(probs);
-        save_tree(file, false);
+        save_tree(file, true);
         // insert sign to continue with 1k iterations
         if(loop)
             write_bit(file, true);
         else{
             write_bit(file, false);
-            uint16_t cnt = data_size - start_index;
+            uint16_t cnt = size - offset;
             write_byte(file, (uint8_t)(cnt >> 8));
             write_byte(file, (uint8_t)cnt);
         }
-        for(int i = 0; loop && i < step; i++){
+        for(int i = 0; i < step; i++){
+            if(i+offset == size)
+                break;
             pt = tree->get_root();
             code_word = "";
             while(true){
-                if(pt->l->val == (uint8_t)image[i+start_index]){
+                if(pt->l->val == (uint8_t)image[i+offset]){
                     pt = pt->l;
                     code_word += "0";
                 }
@@ -267,7 +269,7 @@ void DataFile::adaptive_save(ofstream &file) {
             }
             write_codeword(file, code_word);
         }
-        start_index += step;
+        offset += step;
     }
     write_byte(file, '\0');
 }
@@ -285,7 +287,6 @@ void DataFile::save_tree(ofstream &file, bool normal) {
     while(pt != nullptr){
         if(is_leaf(*pt)){
             // last tree element 11..1
-            // value 256 - EOF
             codewords.insert(pair<unsigned int, string>(pt->val, code_word));
             pt = nullptr;
         }
@@ -298,4 +299,70 @@ void DataFile::save_tree(ofstream &file, bool normal) {
             code_word += "1";
         }
     }
+}
+
+void DataFile::load_compressed_a(const string& input) {
+    ifstream file(input);
+    file.unsetf(std::ios::skipws);
+    file.seekg(0, ios::beg);
+
+    size = 0;
+    uint8_t tree_size;
+    unsigned int val;
+    unsigned char byte;
+    string code_word;
+    int loop_len;
+    bool bit, loop = true;
+    while(loop){
+        tree_size = (uint8_t)get_next_byte(file);
+        decodewords.clear();
+        for(int i = 0; i < tree_size + 1; i++){
+            byte = get_next_byte(file);
+            val = (uint8_t) byte;
+            byte = get_next_byte(file);
+            code_word = "";
+            for(int j = 0; j < (uint8_t)byte + 1; j++){
+                code_word += get_next_bit(file) ? "1" : "0";
+            }
+            decodewords.insert({code_word, val});
+        }
+        code_word = code_word.substr(0, code_word.size() -1) + "1";
+        decodewords.insert({code_word, 256});
+        delete tree;
+        tree = new Tree();
+        tree->build_tree_with_dw(decodewords);
+        bit = get_next_bit(file);
+        if(bit)
+            loop_len = step;
+        else{
+            byte = get_next_byte(file);
+            uint16_t len = byte << 8;
+            len |= (uint8_t) get_next_byte(file);
+            loop = false;
+            loop_len = len;
+        }
+        size += loop_len;
+        for(int i = 0; i < loop_len; i++){
+            auto pt = tree->get_root();
+            code_word = "";
+            while(true){
+                bit = get_next_bit(file);
+                code_word += (bit ? "1" : "0");
+                if(bit)
+                    pt = pt->r;
+                else
+                    pt = pt->l;
+                if(is_leaf(*pt))
+                    break;
+            }
+            image.push_back((uint8_t) pt->val);
+        }
+    }
+}
+
+char DataFile::get_next_byte(ifstream &file) {
+    char byte = '\0';
+    for(int j = 7; j >= 0; j--)
+        byte |= (get_next_bit(file) ? 1 : 0)  << j;
+    return byte;
 }

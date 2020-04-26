@@ -40,14 +40,17 @@ private:
     void compress_data(ofstream &file);
     void decompress_data(ifstream &file);
     bool get_next_bit(ifstream &file);
+    char get_next_byte(ifstream &file);
     void save_tree(ofstream &file, bool normal);
 
     void normal_save(ofstream &file);
     void adaptive_save(ofstream &file);
+    void load_compressed_a(const string& input);
 
     string output;
     int width;
     int size;
+    int step = 1000;
     vector<unsigned char> image;
     bool compress;
     bool adaptive;
