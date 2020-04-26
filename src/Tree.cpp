@@ -3,28 +3,19 @@
  * Author: Tomas Willaschek
  * Login: xwilla00
  * Created: 22.04.2020
+ * Brief: in header file
  */
 
 #include "Tree.h"
 
 #include <vector>
 #include <algorithm>
-#include <numeric>
 
-///TODO delete this block
-/////////////////////////
-#include <iostream>
-using std::cout;
-using std::endl;
-using std::cerr;
-
-/////////////////////////
-
+using std::ios;
 using std::pair;
 using std::vector;
 using std::sort;
 using std::reverse;
-using std::accumulate;
 
 Tree::Tree() {
     this->root = nullptr;
@@ -181,8 +172,6 @@ void Tree::insert_nodes(vector<pair<unsigned int, double>> &items, node_t *locat
         location->r = r;
     }
     else if(items.size() == 1){
-        if(location->l != nullptr || location->r != nullptr)
-            cerr << "null error" << endl;
         location->l = location->r = nullptr;
         location->prob_sum = items[0].second;
         location->val = items[0].first;

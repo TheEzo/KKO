@@ -3,6 +3,7 @@
  * Author: Tomas Willaschek
  * Login: xwilla00
  * Created: 22.04.2020
+ * Brief: in header file
  */
 
 #include "DataFile.h"
@@ -11,22 +12,14 @@
 #include <utility>
 #include <fstream>
 #include <vector>
-#include <cstdlib>
 
-///TODO delete this block
-/////////////////////////
-#include <iostream>
-#include <algorithm>
-using namespace std;
+using std::ios;
 
-/////////////////////////
 
-DataFile::DataFile(const string &input, string output, bool compress, int width, bool adaptive, bool model) {
+DataFile::DataFile(const string &input, string output, bool compress, bool adaptive) {
     this->output = std::move(output);
-    this->width = width;
     this->compress = compress;
     this->adaptive = adaptive;
-    this->model = model;
     this->tree = nullptr;
     this->size = 0;
 
@@ -105,8 +98,6 @@ void DataFile::load_compressed(const string& input) {
         a.insert({val,code_word});
     }
 
-//    for(auto i: a)
-//        cout << i.second << ": " << i.first <<endl;
     tree = new Tree;
     tree->build_tree_with_dw(decodewords);
     decompress_data(file);
@@ -164,8 +155,6 @@ void DataFile::compress_data(ofstream &file) {
     map<unsigned int, string>::iterator it;
     for(int i = 0; i < size; i++){
         it = codewords.find((unsigned int)image[i]);
-        if(it == codewords.end())
-            cerr << "serious failure" << endl;
         write_codeword(file, it->second);
     }
     it = codewords.find(256);
@@ -256,8 +245,6 @@ void DataFile::adaptive_save(ofstream &file) {
             if(i+offset == size)
                 break;
             it = codewords.find((uint8_t)image[i+offset]);
-            if(it == codewords.end())
-                cerr << "serious fail" << endl;
             write_codeword(file, it->second);
         }
         offset += step;
@@ -274,7 +261,6 @@ void DataFile::save_tree(ofstream &file) {
     for(auto cw: codewords){
         if(cw.first == 256)
             break;
-//        cout << cw.first << ": "<<cw.second << endl;
         write_byte(file, (uint8_t)(cw.first));
         write_byte(file, (uint8_t)cw.second.size() - 1);
         write_codeword(file, cw.second);
@@ -306,14 +292,9 @@ void DataFile::load_compressed_a(const string& input) {
             }
             decodewords.insert({code_word, val});
         }
-//        for(auto a: decodewords)
-//            cout << a.second << ": " << a.first << endl;
-//        cout << endl;
         delete tree;
         tree = new Tree();
         tree->build_tree_with_dw(decodewords);
-//        for(auto a: tree->get_code_words())
-//            cout << a.first << ": " << a.second << endl;
         bit = get_next_bit(file);
         if(bit)
             loop_len = step;

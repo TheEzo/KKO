@@ -41,8 +41,8 @@ int main(int argc, char **argv) {
     const char *short_options = "cdami:o:w:h";
     string input, output;
     int option_index;
-    int c, width = 0;
-    bool c_in = false, d_in = false, adaptive = false, model = false;
+    int c;
+    bool c_in = false, d_in = false, adaptive = false;
     while ((c = getopt_long(argc, argv, short_options, long_options, &option_index)) != -1){
         switch (c) {
             case 'c':
@@ -55,7 +55,6 @@ int main(int argc, char **argv) {
                 adaptive = true;
                 break;
             case 'm':
-                model = true;
                 break;
             case 'i':
                 input = optarg;
@@ -64,11 +63,6 @@ int main(int argc, char **argv) {
                 output = optarg;
                 break;
             case 'w':
-                width = atoi(optarg);
-                if(width < 1){
-                    cerr << "Width must be a positive integer" << endl;
-                    exit(1);
-                }
                 break;
             case 'h':
                 help();
@@ -83,7 +77,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    auto codec = new DataFile(input, output, c_in, width, adaptive, model);
+    auto codec = new DataFile(input, output, c_in, adaptive);
     codec->save_result();
 
     return 0;

@@ -3,7 +3,7 @@
  * Author: Tomas Willaschek
  * Login: xwilla00
  * Created: 22.04.2020
- * Brief:
+ * Brief: Whole computation control based on input parameters
  */
 
 #ifndef HUFF_CODEC_DATAFILE_H
@@ -22,7 +22,7 @@ using std::ifstream;
 
 class DataFile {
 public:
-    DataFile(const string& input, string output, bool compress, int width, bool adaptive, bool model);
+    DataFile(const string& input, string output, bool compress, bool adaptive);
     ~DataFile();
 
     /**
@@ -84,27 +84,69 @@ private:
      */
     void decompress_data(ifstream &file);
     /**
-     *
-     * @param file
-     * @return
+     * Read next bit from input stream
+     * @param file : open file descriptor
+     * @return 1/0
      */
     bool get_next_bit(ifstream &file);
+    /**
+     * Read next byte from input stream
+     * @param file  : open file descriptor
+     * @return byte
+     */
     char get_next_byte(ifstream &file);
+    /**
+     * Save huffman tree into file
+     * @param file  : open file descriptor
+     */
     void save_tree(ofstream &file);
-
+    /**
+     * Save image with normal compression
+     * @param file : open file descriptor
+     */
     void normal_save(ofstream &file);
+    /**
+     * Save file with adaptive compression
+     * Create and add unique tree for next 1000 bytes of data flow
+     * @param file  : open file descriptor
+     */
     void adaptive_save(ofstream &file);
+    /**
+     * Load adaptively compressed image to memory
+     * @param input : path on disk
+     */
     void load_compressed_a(const string& input);
-
+    /**
+     * Path to save output
+     */
     string output;
-    int width;
+    /**
+     * count of pixels in image
+     */
     int size;
+    /**
+     * Step for adaptive compression
+     */
     int step = 1000;
+    /**
+     * Loaded image
+     */
     vector<unsigned char> image;
+    /**
+     * Switch whether input or output is compressed
+     */
     bool compress;
+    /**
+     * Switch for adaptive compression/load
+     */
     bool adaptive;
-    bool model;
+    /**
+     * Pointer to codeword tree
+     */
     Tree *tree;
+    /**
+     * Map of decodewords for image pixels
+     */
     map<string, unsigned int> decodewords;
 };
 
