@@ -28,13 +28,14 @@ DataFile::DataFile(const string &input, string output, bool compress, int width,
     this->adaptive = adaptive;
     this->model = model;
     this->tree = nullptr;
+    this->size = 0;
 
     if(compress){
         load_uncompressed(input);
         if(!adaptive){
             auto prob = get_probability();
             tree = new Tree();
-            tree->build_with_probs(prob);
+            tree->build_with_probs(prob, size);
         }
     }
     else
@@ -47,10 +48,6 @@ DataFile::DataFile(const string &input, string output, bool compress, int width,
 DataFile::~DataFile(){
     if(tree != nullptr)
         delete tree;
-}
-
-vector<unsigned char> DataFile::get_image() {
-    return image;
 }
 
 map<unsigned int, int> DataFile::get_probability() {
@@ -86,13 +83,14 @@ void DataFile::load_uncompressed(const string& input) {
 
 void DataFile::load_compressed(const string& input) {
     ifstream file(input);
-
+    file.unsetf(std::ios::skipws);
     file.seekg(0, ios::beg);
     unsigned char byte;
     unsigned int val;
     string code_word;
     uint8_t header = file.get();
     // read header
+    map<int,string>a;
     for(int i = 0; i < header + 1; i++){
         // read coded value
         byte = get_next_byte(file);
@@ -104,10 +102,11 @@ void DataFile::load_compressed(const string& input) {
             code_word += get_next_bit(file) ? "1" : "0";
         }
         decodewords.insert({code_word, val});
+        a.insert({val,code_word});
     }
-    // insert 256
-    code_word = code_word.substr(0, code_word.size() - 1);
-    decodewords.insert({code_word + "1", 256});
+
+//    for(auto i: a)
+//        cout << i.second << ": " << i.first <<endl;
     tree = new Tree;
     tree->build_tree_with_dw(decodewords);
     decompress_data(file);
@@ -116,6 +115,7 @@ void DataFile::load_compressed(const string& input) {
 
 bool DataFile::save_result() {
     ofstream file(output);
+    file.unsetf(std::ios::skipws);
     if(compress){
         if(adaptive)
             adaptive_save(file);
@@ -160,9 +160,12 @@ void DataFile::write_byte(ofstream &file, const unsigned char byte) {
 }
 
 void DataFile::compress_data(ofstream &file) {
+    auto codewords = tree->get_code_words();
     map<unsigned int, string>::iterator it;
     for(int i = 0; i < size; i++){
-        it = codewords.find((uint8_t)image[i]);
+        it = codewords.find((unsigned int)image[i]);
+        if(it == codewords.end())
+            cerr << "serious failure" << endl;
         write_codeword(file, it->second);
     }
     it = codewords.find(256);
@@ -186,7 +189,6 @@ bool DataFile::get_next_bit(ifstream &file) {
 }
 
 void DataFile::decompress_data(ifstream &file) {
-    int index = 0;
     string code_word;
     map<string, unsigned int>::iterator it;
     bool bit;
@@ -206,13 +208,12 @@ void DataFile::decompress_data(ifstream &file) {
         if(pt->val == 256)
             break;
         image.push_back((uint8_t) pt->val);
-        index++;
     }
     size = image.size();
 }
 
 void DataFile::normal_save(ofstream &file) {
-    save_tree(file, true);
+    save_tree(file);
     compress_data(file);
 }
 
@@ -221,7 +222,6 @@ void DataFile::adaptive_save(ofstream &file) {
     map<unsigned int, int> probs;
     map<unsigned int, int>::iterator it;
     int offset = 0;
-    node_t *pt;
     string code_word;
     while(loop){
         probs.clear();
@@ -239,8 +239,8 @@ void DataFile::adaptive_save(ofstream &file) {
         probs.insert({256, 1});
         delete tree;
         tree = new Tree();
-        tree->build_with_probs(probs);
-        save_tree(file, true);
+        tree->build_with_probs(probs, size);
+        save_tree(file);
         // insert sign to continue with 1k iterations
         if(loop)
             write_bit(file, true);
@@ -250,54 +250,34 @@ void DataFile::adaptive_save(ofstream &file) {
             write_byte(file, (uint8_t)(cnt >> 8));
             write_byte(file, (uint8_t)cnt);
         }
+        auto codewords = tree->get_code_words();
+        map<unsigned int, string>::iterator it;
         for(int i = 0; i < step; i++){
             if(i+offset == size)
                 break;
-            pt = tree->get_root();
-            code_word = "";
-            while(true){
-                if(pt->l->val == (uint8_t)image[i+offset]){
-                    pt = pt->l;
-                    code_word += "0";
-                }
-                else{
-                    pt = pt->r;
-                    code_word += "1";
-                }
-                if(is_leaf(*pt))
-                    break;
-            }
-            write_codeword(file, code_word);
+            it = codewords.find((uint8_t)image[i+offset]);
+            if(it == codewords.end())
+                cerr << "serious fail" << endl;
+            write_codeword(file, it->second);
         }
         offset += step;
     }
     write_byte(file, '\0');
 }
 
-void DataFile::save_tree(ofstream &file, bool normal) {
-    // write header size
+void DataFile::save_tree(ofstream &file) {
     // -1 to save max index only
-    unsigned char header_size = tree->get_tree_size() - 1;
     // remove key 256
-    if(normal)
-        header_size -= 1;
+    unsigned char header_size = tree->get_tree_size() - 2;
     write_byte(file, header_size);
-    node_t *pt = tree->get_root();
-    string code_word = "";
-    while(pt != nullptr){
-        if(is_leaf(*pt)){
-            // last tree element 11..1
-            codewords.insert(pair<unsigned int, string>(pt->val, code_word));
-            pt = nullptr;
-        }
-        else{
-            write_byte(file, pt->l->val);
-            write_byte(file, code_word.size());
-            write_codeword(file, code_word + "0");
-            codewords.insert(pair<unsigned int, string>(pt->l->val, code_word + "0"));
-            pt = pt->r;
-            code_word += "1";
-        }
+    auto codewords = tree->get_code_words();
+    for(auto cw: codewords){
+        if(cw.first == 256)
+            break;
+//        cout << cw.first << ": "<<cw.second << endl;
+        write_byte(file, (uint8_t)(cw.first));
+        write_byte(file, (uint8_t)cw.second.size() - 1);
+        write_codeword(file, cw.second);
     }
 }
 
@@ -326,11 +306,14 @@ void DataFile::load_compressed_a(const string& input) {
             }
             decodewords.insert({code_word, val});
         }
-        code_word = code_word.substr(0, code_word.size() -1) + "1";
-        decodewords.insert({code_word, 256});
+//        for(auto a: decodewords)
+//            cout << a.second << ": " << a.first << endl;
+//        cout << endl;
         delete tree;
         tree = new Tree();
         tree->build_tree_with_dw(decodewords);
+//        for(auto a: tree->get_code_words())
+//            cout << a.first << ": " << a.second << endl;
         bit = get_next_bit(file);
         if(bit)
             loop_len = step;
