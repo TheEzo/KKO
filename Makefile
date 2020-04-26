@@ -15,5 +15,5 @@ clean:
 	rm -f kko_xwilla00.zip
 
 pack:
-	zip -r kko_xwilla00.zip src/ Makefile willa00.pdf
+	zip -r kko_xwilla00.zip src/ Makefile xwilla00.pdf test.sh data/
 
